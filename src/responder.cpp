@@ -52,7 +52,7 @@ void setup() {
 
     dw.write16bitReg(CIA_2, CIA_CONF, 0x4001);
     dw.write16bitReg(GEN_CFG_AES_1, TX_ANTD, 0x4001);
-    dw.or32bitReg(GPIO_CTRL, GPIO_MODE, 0x48000);
+    dw.modify32bitReg(GPIO_CTRL, GPIO_MODE, 0xFFE00FC0, 0x49000);
 
     // Print DEV ID
     char devString[64];

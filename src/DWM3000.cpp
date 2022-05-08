@@ -19,7 +19,7 @@ void DWM3000::writeToSPI(byte address, uint16_t offset, uint16_t length, byte* b
     header[1] = (byte)(addr | (mode & 0x03));
 
     if (length == 0) {
-        header[0] = (uint8_t)(0x80 | (address << 1) | 0x01);
+        header[0] = (byte)(address << 1) | 0x81;
         headerLength = 1;
     } else if (offset == 0 && (mode == SPI_WR_BIT || mode == SPI_RD_BIT)) {
         headerLength = 1;
@@ -148,8 +148,6 @@ void DWM3000::configure(DWM3000Config *config) {
     write16bitReg(PMSC, CLK_CTRL, 0x200);
     or16bitReg(PMSC, SEQ_CTRL, 0x100);
 
-    writeFastCMD(CMD_RX); // How does this lock PLL (╯°□°）╯︵ ┻━┻ 
-
     byte flag = 1;
     for (byte i = 0; i < 6; i++) {
         delayMicroseconds(20);
@@ -159,7 +157,6 @@ void DWM3000::configure(DWM3000Config *config) {
         }
 
         Serial.println("PLL not locked, retrying...");
-        Serial.println(std::bitset<32>(read32bitReg(GEN_CFG_AES_0, SYS_STATUS)).to_string().c_str());
     }
 
     if (flag) {
@@ -167,9 +164,6 @@ void DWM3000::configure(DWM3000Config *config) {
         while(1) {}
     }
 
-    _SPISettings = SPI_FAST;
-
-    and8bitReg(RX_TUNE, DGC_CFG, 0xFE);
     if ((config->rxCode >= 9) && (config->rxCode <= 24)) {
         configurelut(config->channel);
         modify16bitReg(RX_TUNE, DGC_CFG, 0x81FF, 0x6400);
@@ -181,35 +175,26 @@ void DWM3000::configure(DWM3000Config *config) {
 }
 
 void DWM3000::configurelut(int channel) {
-	uint32_t lut0, lut1, lut2, lut3, lut4, lut5, lut6 = 0;
-
     if (channel == 5) {
-        lut0 = (uint32_t)CH5_DGC_LUT_0;
-        lut1 = (uint32_t)CH5_DGC_LUT_1;
-        lut2 = (uint32_t)CH5_DGC_LUT_2;
-        lut3 = (uint32_t)CH5_DGC_LUT_3;
-        lut4 = (uint32_t)CH5_DGC_LUT_4;
-        lut5 = (uint32_t)CH5_DGC_LUT_5;
-        lut6 = (uint32_t)CH5_DGC_LUT_6;
+        write32bitReg(RX_TUNE, DGC_LUT_0, (uint32_t)CH5_DGC_LUT_0);
+        write32bitReg(RX_TUNE, DGC_LUT_1, (uint32_t)CH5_DGC_LUT_1);
+        write32bitReg(RX_TUNE, DGC_LUT_2, (uint32_t)CH5_DGC_LUT_2);
+        write32bitReg(RX_TUNE, DGC_LUT_3, (uint32_t)CH5_DGC_LUT_3);
+        write32bitReg(RX_TUNE, DGC_LUT_4, (uint32_t)CH5_DGC_LUT_4);
+        write32bitReg(RX_TUNE, DGC_LUT_5, (uint32_t)CH5_DGC_LUT_5);
+        write32bitReg(RX_TUNE, DGC_LUT_6, (uint32_t)CH5_DGC_LUT_6);
     } else {
-        lut0 = (uint32_t)CH9_DGC_LUT_0;
-        lut1 = (uint32_t)CH9_DGC_LUT_1;
-        lut2 = (uint32_t)CH9_DGC_LUT_2;
-        lut3 = (uint32_t)CH9_DGC_LUT_3;
-        lut4 = (uint32_t)CH9_DGC_LUT_4;
-        lut5 = (uint32_t)CH9_DGC_LUT_5;
-        lut6 = (uint32_t)CH9_DGC_LUT_6;
+        write32bitReg(RX_TUNE, DGC_LUT_0, (uint32_t)CH9_DGC_LUT_0);
+        write32bitReg(RX_TUNE, DGC_LUT_1, (uint32_t)CH9_DGC_LUT_1);
+        write32bitReg(RX_TUNE, DGC_LUT_2, (uint32_t)CH9_DGC_LUT_2);
+        write32bitReg(RX_TUNE, DGC_LUT_3, (uint32_t)CH9_DGC_LUT_3);
+        write32bitReg(RX_TUNE, DGC_LUT_4, (uint32_t)CH9_DGC_LUT_4);
+        write32bitReg(RX_TUNE, DGC_LUT_5, (uint32_t)CH9_DGC_LUT_5);
+        write32bitReg(RX_TUNE, DGC_LUT_6, (uint32_t)CH9_DGC_LUT_6);
     }
 
-    write32bitReg(DGC_LUT_0, 0x0, lut0);
-    write32bitReg(DGC_LUT_1, 0x0, lut1);
-    write32bitReg(DGC_LUT_2, 0x0, lut2);
-    write32bitReg(DGC_LUT_3, 0x0, lut3);
-    write32bitReg(DGC_LUT_4, 0x0, lut4);
-    write32bitReg(DGC_LUT_5, 0x0, lut5);
-    write32bitReg(DGC_LUT_6, 0x0, lut6);
-    write32bitReg(DGC_CFG0, 0x0, 0x10000240);
-    write32bitReg(DGC_CFG1, 0x0, 0x1B6DA489);
+    write32bitReg(RX_TUNE, DGC_CFG0, 0x10000240);
+    write32bitReg(RX_TUNE, DGC_CFG1, 0x1B6DA489);
 }
 
 void DWM3000::configureRFTX(DW3000RFTXConfig *config) {
@@ -252,8 +237,8 @@ void DWM3000::enableClock(byte clock) {
 }
 
 void DWM3000::enableRFTX(uint32_t channel, byte switchControl) {
-    or32bitReg(RF_CONF, LDO_CTRL, 0x8000800);
-    or32bitReg(RF_CONF, LDO_CTRL, 0x600060);
+    or32bitReg(RF_CONF, LDO_CTRL, 0x08000800);
+    or32bitReg(RF_CONF, LDO_CTRL, 0x00600060);
 
     if (channel == 5) {
         or32bitReg(RF_CONF, RF_ENABLE, 0x02003C00);
@@ -365,35 +350,35 @@ bool DWM3000::isTransmitDone() {
 }
 
 void DWM3000::modify8bitReg(byte address, int offset, const uint8_t _and, const uint8_t _or) {
-    uint8_t buffer[8];
-    buffer[0] = (uint8_t)_and;
-    buffer[1] = (uint8_t)_or;
+    byte buffer[8];
+    buffer[0] = (byte)_and;
+    buffer[1] = (byte)_or;
 
-    writeToSPI(address, offset, 8, buffer, SPI_AND_OR_32);
+    writeToSPI(address, offset, 8, buffer, SPI_AND_OR_8);
 }
 
 void DWM3000::modify16bitReg(byte address, int offset, const uint16_t _and, const uint16_t _or) {
-    uint8_t buffer[4];
-    buffer[0] = (uint8_t)_and;
-    buffer[1] = (uint8_t)(_and >> 8);
+    byte buffer[4];
+    buffer[0] = (byte)_and;
+    buffer[1] = (byte)(_and >> 8);
 
-    buffer[2] = (uint8_t)_or;
-    buffer[3] = (uint8_t)(_or >> 8);
+    buffer[2] = (byte)_or;
+    buffer[3] = (byte)(_or >> 8);
 
-    writeToSPI(address, offset, 4, buffer, SPI_AND_OR_32);
+    writeToSPI(address, offset, 4, buffer, SPI_AND_OR_16);
 }
 
 void DWM3000::modify32bitReg(byte address, int offset, const uint32_t _and, const uint32_t _or) {
-    uint8_t buffer[8];
-    buffer[0] = (uint8_t)_and;
-    buffer[1] = (uint8_t)(_and >> 8);
-    buffer[2] = (uint8_t)(_and >> 16);
-    buffer[3] = (uint8_t)(_and >> 24);
+    byte buffer[8];
+    buffer[0] = (byte)_and;
+    buffer[1] = (byte)(_and >> 8);
+    buffer[2] = (byte)(_and >> 16);
+    buffer[3] = (byte)(_and >> 24);
 
-    buffer[4] = (uint8_t)_or;
-    buffer[5] = (uint8_t)(_or >> 8);
-    buffer[6] = (uint8_t)(_or >> 16);
-    buffer[7] = (uint8_t)(_or >> 24);
+    buffer[4] = (byte)_or;
+    buffer[5] = (byte)(_or >> 8);
+    buffer[6] = (byte)(_or >> 16);
+    buffer[7] = (byte)(_or >> 24);
 
     writeToSPI(address, offset, 8, buffer, SPI_AND_OR_32);
 }
@@ -528,7 +513,7 @@ void DWM3000::setDelayedTime(uint32_t delayedTime) {
 
 void DWM3000::setTransmitData(int length, byte* buffer) {
     writeReg(TX_BUFFER, 0, length, buffer);
-    write8bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, length);
+    modify32bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, 0xFC00F400, (length + 2) | 0x800);
 }
 
 void DWM3000::setPAN(uint16_t panID, uint16_t shortAddr) {
