@@ -107,6 +107,7 @@ typedef struct {
 class DWM3000 {
     private:
         int csn;
+        bool dgcOTP;
         void writeToSPI(byte address, uint16_t offset, uint16_t length, byte* buffer, uint16_t mode);
 
     public:

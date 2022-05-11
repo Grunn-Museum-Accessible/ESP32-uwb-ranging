@@ -110,24 +110,18 @@ void DWM3000::configure(DWM3000Config *config) {
     write32bitReg(DRX, DTUNE3, 0xAF5F584C); // Default DTUNE3
 
     // CHAN_CTRL
-    uint32_t temp = read32bitReg(GEN_CFG_AES_1, CHAN_CTRL);
-    temp &= 0xFFFFE000;
-    if (config->channel == 9) {
-        temp |= 0x01;
-    }
-
-    temp |= (0x1F00 & ((uint32_t)config->rxCode << 0x08)); // RX code (4)
-    temp |= (0xF8 & ((uint32_t)config->txCode << 0x03)); // TX code (4)
-    temp |= (0x06 & ((uint32_t)config->sfdType << 0x01)); // SFD type (default) 
-
-    write32bitReg(GEN_CFG_AES_1, CHAN_CTRL, temp);
+    modify32bitReg(GEN_CFG_AES_1, CHAN_CTRL, 0xFFFFE000, 
+        (config->channel == 9) |                        // Channel 5 or 9
+        (0x1F00 & ((uint32_t)config->rxCode << 0x08)) | // RX code
+        (0xF8 & ((uint32_t)config->txCode << 0x03)) |   // TX code
+        (0x06 & ((uint32_t)config->sfdType << 0x01)));  // SFD type
 
     // TX_FCTRL
     modify32bitReg(GEN_CFG_AES_0, TX_FCTRL, 0xFFFF0BFF, 
         ((uint32_t)config->dataRate << 0x0A) | 
         ((uint32_t)config->txPreambLength) << 0x0C);
     
-    // DTUNE (SFD tiemout)
+    // DTUNE (SFD timeout)
     write16bitReg(DRX, RX_SFD_TOC, config->sfdTO || 0x81);
 
     if (config->channel == 9) {
@@ -165,7 +159,13 @@ void DWM3000::configure(DWM3000Config *config) {
     }
 
     if ((config->rxCode >= 9) && (config->rxCode <= 24)) {
-        configurelut(config->channel);
+        if (dgcOTP) {
+            modify16bitReg(OTP_IF, OTP_CFG, 0xDFFF, 
+                config->channel == 5 ? 0x0040 : 0x2040);
+        } else {
+            configurelut(config->channel);
+        }
+
         modify16bitReg(RX_TUNE, DGC_CFG, 0x81FF, 0x6400);
     } else {
         and8bitReg(RX_TUNE, DGC_CFG, 0xFE);
@@ -202,7 +202,7 @@ void DWM3000::configureRFTX(DW3000RFTXConfig *config) {
         write8bitReg(RF_CONF, RF_TX_CTRL_2, config->PGdly);
     } else {
         uint8_t channel = 5;
-        if (read8bitReg(GEN_CFG_AES_1, CHAN_CTRL) & 0x1) {
+        if (read8bitReg(GEN_CFG_AES_1, CHAN_CTRL) & 0x01) {
             channel = 9;
         }
     
@@ -316,6 +316,8 @@ void DWM3000::initialize(int rstPin) {
         modify16bitReg(PMSC, BIAS_CTRL, 0xFFE0, biasTune);
     }
 
+    dgcOTP = readOTP(0x20) == 0x10000240;
+
     byte fsXtalt = readOTP(0x1E) & 0x7F;
     if (!fsXtalt) {
         fsXtalt = 0x2E;
@@ -396,7 +398,7 @@ void DWM3000::or32bitReg(byte address, int offset, const uint32_t value) {
 }
 
 void DWM3000::pgfCal() {
-    uint16_t ldoCtrl = read16bitReg(RF_CONF, LDO_CTRL);
+    uint16_t temp = read16bitReg(RF_CONF, LDO_CTRL);
     or16bitReg(RF_CONF, LDO_CTRL, 0x105);
 
     write32bitReg(EXT_SYNC, RX_CAL, 0x20001);
@@ -433,7 +435,7 @@ void DWM3000::pgfCal() {
         while(1) {}
     }
 
-    and16bitReg(RF_CONF, LDO_CTRL, ldoCtrl);
+    and16bitReg(RF_CONF, LDO_CTRL, temp);
 }
 
 void DWM3000::readAccMem(int offset, int length, byte* buffer) {
@@ -463,7 +465,7 @@ uint16_t DWM3000::read16bitReg(byte address, int offset) {
     byte buffer[2];
 
     readReg(address, offset, 2, buffer);
-    return ((uint16_t)buffer[1] << 8) + buffer[0];
+    return (buffer[1] << 8) + buffer[0];
 }
 
 uint32_t DWM3000::read32bitReg(byte address, int offset) {

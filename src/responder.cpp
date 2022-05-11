@@ -5,7 +5,7 @@
 const int PIN_CSN = 5;
 const int PIN_RST = 25;
 
-/* Frames used in the ranging process. See NOTE 2 below. */
+/* Frames used in the ranging process. */
 byte rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 byte tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 byte rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -39,7 +39,7 @@ DWM3000Config config = {
 DW3000RFTXConfig rftxConfig = {
     0x34,       /* PGdly value */
     0xFDFDFDFD, /* Power value */
-    0x3F        /* PG count */
+    0x00        /* PG count */
 };
 
 void setup() {
@@ -52,7 +52,14 @@ void setup() {
 
     dw.write16bitReg(CIA_2, CIA_CONF, 0x4001);
     dw.write16bitReg(GEN_CFG_AES_1, TX_ANTD, 0x4001);
+
     dw.modify32bitReg(GPIO_CTRL, GPIO_MODE, 0xFFE00FC0, 0x49000);
+
+    // LED
+    dw.modify32bitReg(GPIO_CTRL, GPIO_MODE, 0xFFFFF03F, 0x240);
+    dw.or32bitReg(PMSC, CLK_CTRL, 0x840000);
+    dw.write32bitReg(PMSC, 0x16, 0xF0110);
+    dw.write32bitReg(PMSC, 0x16, 0x00110);
 
     // Print DEV ID
     char devString[64];
@@ -66,6 +73,7 @@ void loop() {
     dw.startReceive(false);
 
     while (!((status = dw.read32bitReg(GEN_CFG_AES_0, SYS_STATUS)) & 0x2427D000)) {};
+    Serial.println(std::bitset<32>(dw.read32bitReg(GEN_CFG_AES_0, SYS_STATUS)).to_string().c_str()); // TODO: Remove after fixed
 
     if (status & 0x4000) {
         dw.write32bitReg(GEN_CFG_AES_0, SYS_STATUS, 0x4000);
