@@ -6,9 +6,9 @@ const int PIN_CSN = 5;
 const int PIN_RST = 25;
 
 /* Frames used in the ranging process. */
-byte rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
-byte tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
-byte rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+byte rxPollMsg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
+byte txRespMsg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
+byte rxFinalMsg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 uint32_t status;
 byte frameSeq = 0;
@@ -32,8 +32,7 @@ DWM3000Config config = {
     BR_6M8,        /* Data rate. */
     PHRMODE_STD,   /* PHY header mode. */
     PHRRATE_STD,   /* PHY header rate. */
-    (129 + 8 - 8), /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
-    STS_LEN_64     /* STS length see allowed values in Enum dwt_sts_lengths_e */
+    (129 + 8 - 8)  /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
 };
 
 DW3000RFTXConfig rftxConfig = {
@@ -43,7 +42,7 @@ DW3000RFTXConfig rftxConfig = {
 };
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
     SPI.begin();
 
     dw.initialize(PIN_RST);
@@ -84,7 +83,7 @@ void loop() {
         }
 
         rxBuffer[2] = 0;
-        if (memcmp(rxBuffer, rx_poll_msg, 10) == 0) {
+        if (memcmp(rxBuffer, rxPollMsg, 10) == 0) {
             uint32_t respTXTime;
 
             pollRXTimestamp = dw.getReceiveTimestamp();
@@ -96,8 +95,8 @@ void loop() {
             dw.or16bitReg(GEN_CFG_AES_0, SYS_CFG, 0x200);
             dw.write16bitReg(DRX, DTUNE1, 0x05);
 
-            tx_resp_msg[2] = frameSeq;
-            dw.setTransmitData(sizeof(tx_resp_msg), tx_resp_msg);
+            txRespMsg[2] = frameSeq;
+            dw.setTransmitData(sizeof(txRespMsg), txRespMsg, true);
             dw.startTransmit(true, true);
 
             while (!((status = dw.read32bitReg(GEN_CFG_AES_0, SYS_STATUS)) & 0x2427D000)) {};
@@ -112,7 +111,7 @@ void loop() {
                 }
 
                 rxBuffer[2] = 0;
-                if (memcmp(rxBuffer, rx_final_msg, 10) == 0) {
+                if (memcmp(rxBuffer, rxFinalMsg, 10) == 0) {
                     uint32_t pollTXTimestamp, respRXTimestamp, finalTXTimestamp;
                     uint32_t pollRXTimestamp32, respTXTimestamp32, finalRXTimestamp32;
                     double Ra, Rb, Da, Db;

@@ -97,7 +97,6 @@ void DWM3000::clearTransmitStatus() {
 
 void DWM3000::configure(DWM3000Config *config) {
     byte mode = (config->phrMode == 0x01) ? 0x10 : 0;
-    uint16_t stsLength = (uint16_t)(1 << (config->stsLength + 2));
 
     modify32bitReg(GEN_CFG_AES_0, SYS_CFG, 0xFFFC4FCF,
         (((uint32_t)config->phrRate << 5) & 5) | mode); // SYS_CFG
@@ -105,7 +104,6 @@ void DWM3000::configure(DWM3000Config *config) {
     modify32bitReg(OTP_IF, OTP_CFG, 0xFFFFE7FF, 0x1400); // OTP_CFG
 
     modify8bitReg(DRX, DTUNE0, 0xFC, config->rxPAC); // PAC
-    write8bitReg(STS_CONFIG, STS_CFG, stsLength - 1); // STS length
     write8bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, 0x00); // Clear FINE_PLEN
     write32bitReg(DRX, DTUNE3, 0xAF5F584C); // Default DTUNE3
 
@@ -122,7 +120,11 @@ void DWM3000::configure(DWM3000Config *config) {
         ((uint32_t)config->txPreambLength) << 0x0C);
     
     // DTUNE (SFD timeout)
-    write16bitReg(DRX, RX_SFD_TOC, config->sfdTO || 0x81);
+    if (!config->sfdTO) {
+        config->sfdTO = 0x81;
+    }
+
+    write16bitReg(DRX, RX_SFD_TOC, config->sfdTO);
 
     if (config->channel == 9) {
         write32bitReg(RF_CONF, RF_TX_CTRL_2, 0x1C010034);
@@ -311,7 +313,7 @@ void DWM3000::initialize(int rstPin) {
     uint32_t ldoTuneLo = readOTP(0x04);
     uint32_t ldoTuneHi = readOTP(0x05);
     uint32_t biasTune = (readOTP(0x0A) >> 16) & 0x1F;
-    if ((ldoTuneLo != 0) && (ldoTuneHi != 0) && (biasTune != 0)) {
+    if (ldoTuneLo && ldoTuneHi && biasTune) {
         or16bitReg(OTP_IF, OTP_CFG, 0x180);
         modify16bitReg(PMSC, BIAS_CTRL, 0xFFE0, biasTune);
     }
@@ -513,9 +515,9 @@ void DWM3000::setDelayedTime(uint32_t delayedTime) {
     write32bitReg(GEN_CFG_AES_0, DX_TIME, delayedTime);
 }
 
-void DWM3000::setTransmitData(int length, byte* buffer) {
+void DWM3000::setTransmitData(int length, byte* buffer, bool ranging) {
     writeReg(TX_BUFFER, 0, length, buffer);
-    modify32bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, 0xFC00F400, (length + 2) | 0x800);
+    modify32bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, 0xFC00F400, (length + 2) | ranging << 11);
 }
 
 void DWM3000::setPAN(uint16_t panID, uint16_t shortAddr) {

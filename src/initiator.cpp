@@ -6,9 +6,9 @@ const int PIN_CSN = 5;
 const int PIN_RST = 25;
 
 /* Frames used in the ranging process. */
-byte tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21};
-byte rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0};
-byte tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+byte txPollMsg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21};
+byte rxRespMsg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0};
+byte txFinalMsg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 uint32_t status;
 byte frameSeq = 0;
@@ -29,8 +29,7 @@ DWM3000Config config = {
     BR_6M8,        /* Data rate. */
     PHRMODE_STD,   /* PHY header mode. */
     PHRRATE_STD,   /* PHY header rate. */
-    (129 + 8 - 8), /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
-    STS_LEN_64     /* STS length see allowed values in Enum dwt_sts_lengths_e */
+    (129 + 8 - 8)  /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
 };
 
 DW3000RFTXConfig rftxConfig = {
@@ -40,7 +39,7 @@ DW3000RFTXConfig rftxConfig = {
 };
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
     SPI.begin();
 
     dw.initialize(PIN_RST);
@@ -70,8 +69,8 @@ void setup() {
 }
 
 void loop() {
-    tx_poll_msg[2] = frameSeq;
-    dw.setTransmitData(sizeof(tx_poll_msg), tx_poll_msg);
+    txPollMsg[2] = frameSeq;
+    dw.setTransmitData(sizeof(txPollMsg), txPollMsg, true);
     dw.startTransmit(false, true);
 
     while (!((status = dw.read32bitReg(GEN_CFG_AES_0, SYS_STATUS)) & 0x2427D000)) {};
@@ -87,7 +86,7 @@ void loop() {
         }
 
         rxBuffer[2] = 0;
-        if (memcmp(rxBuffer, rx_resp_msg, 10) == 0) {
+        if (memcmp(rxBuffer, rxRespMsg, 10) == 0) {
             uint32_t finalTXTime;
 
             pollTXTimestamp = dw.getTimestamp();
@@ -99,17 +98,17 @@ void loop() {
             finalTXTimestamp = (((uint64_t)(finalTXTime & 0xFFFFFFFEUL)) << 8) + TX_ANT_DLY;
 
             for (byte i = 0; i < 4; i++) {
-                (&tx_final_msg[10])[i] = (uint8_t)pollTXTimestamp;
-                (&tx_final_msg[14])[i] = (uint8_t)respRXTimestamp;
-                (&tx_final_msg[18])[i] = (uint8_t)finalTXTimestamp;
+                (&txFinalMsg[10])[i] = (byte)pollTXTimestamp;
+                (&txFinalMsg[14])[i] = (byte)respRXTimestamp;
+                (&txFinalMsg[18])[i] = (byte)finalTXTimestamp;
 
                 pollTXTimestamp >>= 8;
                 respRXTimestamp >>= 8;
                 finalTXTimestamp >>= 8;
             }
 
-            tx_final_msg[2] = frameSeq;
-            dw.setTransmitData(sizeof(tx_final_msg), tx_final_msg);
+            txFinalMsg[2] = frameSeq;
+            dw.setTransmitData(sizeof(txFinalMsg), txFinalMsg, true);
             dw.startTransmit(true, false);
 
             while (!dw.isTransmitDone()) {};

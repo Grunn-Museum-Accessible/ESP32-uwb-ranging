@@ -14,13 +14,6 @@
 #define SPEED_OF_LIGHT                  299702547
 #define DISTANCE_PER_DWT_TIME_UNIT      ((double)DWT_TIME_UNITS * (double)SPEED_OF_LIGHT)
 
-// SPI Modes
-constexpr uint16_t SPI_RD_BIT    = 0x0000U;
-constexpr uint16_t SPI_WR_BIT    = 0x8000U;
-constexpr uint16_t SPI_AND_OR_8  = 0x8001U;
-constexpr uint16_t SPI_AND_OR_16 = 0x8002U;
-constexpr uint16_t SPI_AND_OR_32 = 0x8003U;
-
 // Configuration options
 #define PAC8        0       // PAC  8 (recommended for RX of preamble length  128 and below
 #define PAC16       1       // PAC 16 (recommended for RX of preamble length  256
@@ -31,7 +24,7 @@ constexpr uint16_t SPI_AND_OR_32 = 0x8003U;
 #define PLEN_2048   0x0A    // Non-standard preamble length 2048 symbols
 #define PLEN_1536   0x06    // Non-standard preamble length 1536 symbols
 #define PLEN_1024   0x02    // Standard preamble length 1024 symbols
-#define PLEN_512    0x0d    // Non-standard preamble length 512 symbols
+#define PLEN_512    0x0D    // Non-standard preamble length 512 symbols
 #define PLEN_256    0x09    // Non-standard preamble length 256 symbols
 #define PLEN_128    0x05    // Non-standard preamble length 128 symbols
 #define PLEN_64     0x01    // Standard preamble length 64 symbols
@@ -69,7 +62,6 @@ typedef struct {
     uint8_t phrMode;                // PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
     uint8_t phrRate;                // PHR rate {0x0 - standard DWT_PHRRATE_STD, 0x1 - at datarate DWT_PHRRATE_DTA}
     uint16_t sfdTO;                 // SFD timeout value (in symbols)
-    DWM3000STSLength stsLength;     // STS length (the allowed values are listed in dwt_sts_lengths_e  
 } DWM3000Config;
 
 typedef enum {
@@ -94,11 +86,6 @@ typedef enum {
 
 typedef struct {
     uint8_t   PGdly;
-    // TX POWER
-    // 31:24     TX_CP_PWR
-    // 23:16     TX_SHR_PWR
-    // 15:8      TX_PHR_PWR
-    // 7:0       TX_DATA_PWR
     uint32_t  power;
     uint16_t  PGcount;
 } DW3000RFTXConfig;
@@ -163,7 +150,7 @@ class DWM3000 {
         void reset(int rstPin);
         void resetReceiver();
         void setDelayedTime(uint32_t delayedTime);
-        void setTransmitData(int length, byte* buffer);
+        void setTransmitData(int length, byte* buffer, bool ranging);
         void setPAN(uint16_t panID, uint16_t shortAddr);
         void startAccMemRead();
         void startReceive(bool delayed);
@@ -175,6 +162,13 @@ class DWM3000 {
         void write16bitReg(byte address, int offset, uint16_t value);
         void write32bitReg(byte address, int offset, uint32_t value);
 };
+
+// SPI Modes
+constexpr uint16_t SPI_RD_BIT =     0x0000U;
+constexpr uint16_t SPI_WR_BIT =     0x8000U;
+constexpr uint16_t SPI_AND_OR_8 =   0x8001U;
+constexpr uint16_t SPI_AND_OR_16 =  0x8002U;
+constexpr uint16_t SPI_AND_OR_32 =  0x8003U;
 
 // Clock values
 constexpr byte SYS_AUTO_CLOCK =         0x00;
