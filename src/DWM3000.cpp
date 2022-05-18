@@ -101,7 +101,31 @@ void DWM3000::configure(DWM3000Config *config) {
     modify32bitReg(GEN_CFG_AES_0, SYS_CFG, 0xFFFC4FCF,
         (((uint32_t)config->phrRate << 5) & 5) | mode); // SYS_CFG
 
-    modify32bitReg(OTP_IF, OTP_CFG, 0xFFFFE7FF, 0x1400); // OTP_CFG
+    // OTP_CFG
+    uint16_t preambleLen;
+    switch (config->txPreambLength) {
+        case PLEN_32:
+            preambleLen = 32;
+            break;
+        case PLEN_64:
+            preambleLen = 64;
+            break;
+        case PLEN_72:
+            preambleLen = 72;
+            break;
+        case PLEN_128:
+            preambleLen = 128;
+            break;
+        default:
+            preambleLen = 256;
+            break;
+    }
+
+    if (preambleLen >= 256) {
+        modify32bitReg(OTP_IF, OTP_CFG, 0xFFFFE7FF, 0x0400);
+    } else {
+        modify32bitReg(OTP_IF, OTP_CFG, 0xFFFFE7FF, 0x1400);
+    }
 
     modify8bitReg(DRX, DTUNE0, 0xFC, config->rxPAC); // PAC
     write8bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, 0x00); // Clear FINE_PLEN
@@ -263,10 +287,6 @@ void DWM3000::enableRFTXBlocks(uint32_t channel) {
 
 void DWM3000::endAccMemRead() {
     or16bitReg(PMSC, CLK_CTRL, 0x7FBF);
-}
-
-void DWM3000::forceTXRXOff() {
-    writeFastCMD(CMD_TXRXOFF);
 }
 
 void DWM3000::getPrintableDevID(char msgBuffer[]) {

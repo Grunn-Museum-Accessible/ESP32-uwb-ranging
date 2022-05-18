@@ -4,53 +4,6 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-// Antenna delay - this is best determined by testing range measurements
-#define TX_ANT_DLY                      (16445)
-#define TX_ANT_DLY_MSB                  ((TX_ANT_DLY>>8) & 0xFF)
-#define TX_ANT_DLY_LSB                  (TX_ANT_DLY & 0xFF)
-
-// Distance calculation params
-#define DWT_TIME_UNITS                  (1.0/499.2e6/128.0)
-#define SPEED_OF_LIGHT                  299702547
-#define DISTANCE_PER_DWT_TIME_UNIT      ((double)DWT_TIME_UNITS * (double)SPEED_OF_LIGHT)
-
-// Configuration options
-#define PAC8        0       // PAC  8 (recommended for RX of preamble length  128 and below
-#define PAC16       1       // PAC 16 (recommended for RX of preamble length  256
-#define PAC32       2       // PAC 32 (recommended for RX of preamble length  512
-#define PAC4        3       // PAC  4 (recommended for RX of preamble length  < 127
-
-#define PLEN_4096   0x03    // Standard preamble length 4096 symbols
-#define PLEN_2048   0x0A    // Non-standard preamble length 2048 symbols
-#define PLEN_1536   0x06    // Non-standard preamble length 1536 symbols
-#define PLEN_1024   0x02    // Standard preamble length 1024 symbols
-#define PLEN_512    0x0D    // Non-standard preamble length 512 symbols
-#define PLEN_256    0x09    // Non-standard preamble length 256 symbols
-#define PLEN_128    0x05    // Non-standard preamble length 128 symbols
-#define PLEN_64     0x01    // Standard preamble length 64 symbols
-#define PLEN_32     0x04    // Non-standard length 32
-#define PLEN_72     0x07    // Non-standard length 72
-
-#define BR_850K     0       // UWB bit rate 850 kbits/s
-#define BR_6M8      1       // UWB bit rate 6.8 Mbits/s
-#define BR_NODATA   2       // No data (SP3 packet format)
-
-#define PHRMODE_STD 0x0     // Standard PHR mode
-#define PHRMODE_EXT 0x1     // DW proprietary extended frames PHR mode
-
-#define PHRRATE_STD 0x0     // Standard PHR rate
-#define PHRRATE_DTA 0x1     // PHR at data rate (6M81)
-
-typedef enum {
-    STS_LEN_32   = 0,
-    STS_LEN_64   = 1,
-    STS_LEN_128  = 2,
-    STS_LEN_256  = 3,
-    STS_LEN_512  = 4,
-    STS_LEN_1024 = 5,
-    STS_LEN_2048 = 6
-} DWM3000STSLength;
-
 typedef struct {
     uint8_t channel;                // Channel number (5 or 9)
     uint8_t txPreambLength;         // DWT_PLEN_64..DWT_PLEN_4096
@@ -65,23 +18,23 @@ typedef struct {
 } DWM3000Config;
 
 typedef enum {
-    CH5_DGC_LUT_0 = 0x1c0fd,
-    CH5_DGC_LUT_1 = 0x1c43e,
-    CH5_DGC_LUT_2 = 0x1c6be,
-    CH5_DGC_LUT_3 = 0x1c77e,
-    CH5_DGC_LUT_4 = 0x1cf36,
-    CH5_DGC_LUT_5 = 0x1cfb5,
-    CH5_DGC_LUT_6 = 0x1cff5
+    CH5_DGC_LUT_0 = 0x1C0FD,
+    CH5_DGC_LUT_1 = 0x1C43E,
+    CH5_DGC_LUT_2 = 0x1C6BE,
+    CH5_DGC_LUT_3 = 0x1C77E,
+    CH5_DGC_LUT_4 = 0x1CF36,
+    CH5_DGC_LUT_5 = 0x1CFB5,
+    CH5_DGC_LUT_6 = 0x1CFF5
 } DWM3000lutCh5;
 
 typedef enum {
-    CH9_DGC_LUT_0 = 0x2a8fe,
-    CH9_DGC_LUT_1 = 0x2ac36,
-    CH9_DGC_LUT_2 = 0x2a5fe,
-    CH9_DGC_LUT_3 = 0x2af3e,
-    CH9_DGC_LUT_4 = 0x2af7d,
-    CH9_DGC_LUT_5 = 0x2afb5,
-    CH9_DGC_LUT_6 = 0x2afb5
+    CH9_DGC_LUT_0 = 0x2A8FE,
+    CH9_DGC_LUT_1 = 0x2AC36,
+    CH9_DGC_LUT_2 = 0x2A5FE,
+    CH9_DGC_LUT_3 = 0x2AF3E,
+    CH9_DGC_LUT_4 = 0x2AF7D,
+    CH9_DGC_LUT_5 = 0x2AFB5,
+    CH9_DGC_LUT_6 = 0x2AFB5
 } DWM3000lutCh9;
 
 typedef struct {
@@ -116,7 +69,6 @@ class DWM3000 {
         void enableRFTX(uint32_t channel, byte switchControl);
         void enableRFTXBlocks(uint32_t channel);
         void endAccMemRead();
-        void forceTXRXOff();
         void getPrintableDevID(char msgBuffer[]);
         void getReceiveData(int length, byte* buffer);
         uint64_t getReceiveTimestamp();
@@ -340,5 +292,43 @@ constexpr byte CMD_DTX_REF_W4R =    0x10;
 constexpr byte CMD_CCA_TX_W4R =     0x11;
 constexpr byte CMD_CLR_IRQS =       0x12;
 constexpr byte CMD_DB_TOGGLE =      0x13;
+
+
+// Antenna delay - this is best determined by testing range measurements
+#define TX_ANT_DLY                      (16445)
+#define TX_ANT_DLY_MSB                  ((TX_ANT_DLY>>8) & 0xFF)
+#define TX_ANT_DLY_LSB                  (TX_ANT_DLY & 0xFF)
+
+// Distance calculation params
+#define DWT_TIME_UNITS                  (1.0/499.2e6/128.0)
+#define SPEED_OF_LIGHT                  299702547
+#define DISTANCE_PER_DWT_TIME_UNIT      ((double)DWT_TIME_UNITS * (double)SPEED_OF_LIGHT)
+
+// Configuration options
+#define PAC8        0       // PAC  8 (recommended for RX of preamble length  128 and below
+#define PAC16       1       // PAC 16 (recommended for RX of preamble length  256
+#define PAC32       2       // PAC 32 (recommended for RX of preamble length  512
+#define PAC4        3       // PAC  4 (recommended for RX of preamble length  < 127
+
+#define PLEN_4096   0x03    // Standard preamble length 4096 symbols
+#define PLEN_2048   0x0A    // Non-standard preamble length 2048 symbols
+#define PLEN_1536   0x06    // Non-standard preamble length 1536 symbols
+#define PLEN_1024   0x02    // Standard preamble length 1024 symbols
+#define PLEN_512    0x0D    // Non-standard preamble length 512 symbols
+#define PLEN_256    0x09    // Non-standard preamble length 256 symbols
+#define PLEN_128    0x05    // Non-standard preamble length 128 symbols
+#define PLEN_64     0x01    // Standard preamble length 64 symbols
+#define PLEN_32     0x04    // Non-standard length 32
+#define PLEN_72     0x07    // Non-standard length 72
+
+#define BR_850K     0       // UWB bit rate 850 kbits/s
+#define BR_6M8      1       // UWB bit rate 6.8 Mbits/s
+#define BR_NODATA   2       // No data (SP3 packet format)
+
+#define PHRMODE_STD 0x0     // Standard PHR mode
+#define PHRMODE_EXT 0x1     // DW proprietary extended frames PHR mode
+
+#define PHRRATE_STD 0x0     // Standard PHR rate
+#define PHRRATE_DTA 0x1     // PHR at data rate (6M81)
 
 #endif // DWM3000_H

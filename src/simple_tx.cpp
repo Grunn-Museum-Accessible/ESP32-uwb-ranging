@@ -8,20 +8,20 @@ const int PIN_RST = 25;
 DWM3000 dw(PIN_CSN);
 DWM3000Config config = {
     5,             /* Channel number. */
-    PLEN_128,      /* Preamble length. Used in TX only. */
-    PAC8,          /* Preamble acquisition chunk size. Used in RX only. */
+    PLEN_256,      /* Preamble length. Used in TX only. */
+    PAC16,         /* Preamble acquisition chunk size. Used in RX only. */
     9,             /* TX preamble code. Used in TX only. */
     9,             /* RX preamble code. Used in RX only. */
     3,             /* 0 to use standard 8 symbol SFD, 1 to use non-standard 8 symbol, 2 for non-standard 16 symbol SFD and 3 for 4z 8 symbol SDF type */
-    BR_6M8,        /* Data rate. */
+    BR_850K,       /* Data rate. */
     PHRMODE_STD,   /* PHY header mode. */
     PHRRATE_STD,   /* PHY header rate. */
-    (129 + 8 - 8)  /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
+    (257 + 8 - 16) /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
 };
 
 DW3000RFTXConfig txConfig = {
     0x34,       /* PGdly value */
-    0xFDFDFDFD, /* Power value */
+    0xFFFFFFFF, /* Power value */
     0x00        /* PG count */
 };
 
@@ -56,6 +56,7 @@ void loop() {
     dw.startTransmit(false, false);
 
     while (!(dw.read32bitReg(GEN_CFG_AES_0, SYS_STATUS) & 0x80)) {};
+    Serial.println(std::bitset<32>(dw.read32bitReg(GEN_CFG_AES_0, SYS_STATUS)).to_string().c_str()); // TODO: Remove after fixed
 
     dw.write32bitReg(GEN_CFG_AES_0, SYS_STATUS, 0x80);
     Serial.println("TX Frame Sent");
