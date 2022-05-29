@@ -41,7 +41,7 @@ typedef struct {
     uint8_t   PGdly;
     uint32_t  power;
     uint16_t  PGcount;
-} DW3000RFTXConfig;
+} DWM3000TXConfig;
 
 // Main class
 class DWM3000 {
@@ -62,7 +62,7 @@ class DWM3000 {
         void clearTransmitStatus();
         void configure(DWM3000Config *config);
         void configurelut(int channel);
-        void configureRFTX(DW3000RFTXConfig *config);
+        void configureRFTX(DWM3000TXConfig *config);
         void disableRFTX(byte switchConfig);
         void disableRFTXBlocks();
         void enableClock(byte clock);
@@ -102,7 +102,7 @@ class DWM3000 {
         void reset(int rstPin);
         void resetReceiver();
         void setDelayedTime(uint32_t delayedTime);
-        void setTransmitData(int length, byte* buffer, bool ranging);
+        void setTransmitData(int length, byte* buffer, int ranging, int fcs);
         void setPAN(uint16_t panID, uint16_t shortAddr);
         void startAccMemRead();
         void startReceive(bool delayed);

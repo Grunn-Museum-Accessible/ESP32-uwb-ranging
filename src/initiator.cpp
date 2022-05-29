@@ -21,18 +21,18 @@ uint64_t respRXTimestamp;
 DWM3000 dw(PIN_CSN);
 DWM3000Config config = {
     5,             /* Channel number. */
-    PLEN_256,      /* Preamble length. Used in TX only. */
-    PAC16,         /* Preamble acquisition chunk size. Used in RX only. */
+    PLEN_128,      /* Preamble length. Used in TX only. */
+    PAC8,          /* Preamble acquisition chunk size. Used in RX only. */
     9,             /* TX preamble code. Used in TX only. */
     9,             /* RX preamble code. Used in RX only. */
-    3,             /* 0 to use standard 8 symbol SFD, 1 to use non-standard 8 symbol, 2 for non-standard 16 symbol SFD and 3 for 4z 8 symbol SDF type */
-    BR_850K,       /* Data rate. */
+    1,             /* 0 to use standard 8 symbol SFD, 1 to use non-standard 8 symbol, 2 for non-standard 16 symbol SFD and 3 for 4z 8 symbol SDF type */
+    BR_6M8,        /* Data rate. */
     PHRMODE_STD,   /* PHY header mode. */
     PHRRATE_STD,   /* PHY header rate. */
-    (257 + 8 - 16) /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
+    (128 + 8 - 8)  /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
 };
 
-DW3000RFTXConfig rftxConfig = {
+DWM3000TXConfig rftxConfig = {
     0x34,       /* PGdly value */
     0xFFFFFFFF, /* Power value */
     0x00        /* PG count */
@@ -49,10 +49,10 @@ void setup() {
     dw.write16bitReg(CIA_2, CIA_CONF, 0x4001);
     dw.write16bitReg(GEN_CFG_AES_1, TX_ANTD, 0x4001);
 
-    dw.modify32bitReg(GEN_CFG_AES_1, ACK_RESP_T, 0xFFF00000, 0x2BC);
-    dw.write32bitReg(GEN_CFG_AES_0, RX_FWTO, 0x12C);
+    dw.modify32bitReg(GEN_CFG_AES_1, ACK_RESP_T, 0xFFF00000, 700);
+    dw.write32bitReg(GEN_CFG_AES_0, RX_FWTO, 300);
     dw.or16bitReg(GEN_CFG_AES_0, SYS_CFG, 0x200);
-    dw.write16bitReg(DRX, DTUNE1, 0x05);
+    dw.write16bitReg(DRX, DTUNE1, 5);
 
     dw.modify32bitReg(GPIO_CTRL, GPIO_MODE, 0xFFE00FC0, 0x49000);
 
@@ -70,7 +70,7 @@ void setup() {
 
 void loop() {
     txPollMsg[2] = frameSeq;
-    dw.setTransmitData(sizeof(txPollMsg), txPollMsg, true);
+    dw.setTransmitData(sizeof(txPollMsg), txPollMsg, 1, 1);
     dw.startTransmit(false, true);
 
     while (!((status = dw.read32bitReg(GEN_CFG_AES_0, SYS_STATUS)) & 0x2427D000)) {};
@@ -89,7 +89,7 @@ void loop() {
         if (memcmp(rxBuffer, rxRespMsg, 10) == 0) {
             uint32_t finalTXTime;
 
-            pollTXTimestamp = dw.getTimestamp();
+            pollTXTimestamp = dw.getTransmitTimestamp();
             respRXTimestamp = dw.getReceiveTimestamp();
             finalTXTime = (respRXTimestamp + 0x02AA8118) >> 8;
             dw.setDelayedTime(finalTXTime);
@@ -108,7 +108,7 @@ void loop() {
             }
 
             txFinalMsg[2] = frameSeq;
-            dw.setTransmitData(sizeof(txFinalMsg), txFinalMsg, true);
+            dw.setTransmitData(sizeof(txFinalMsg), txFinalMsg, 1, 1);
             dw.startTransmit(true, false);
 
             while (!dw.isTransmitDone()) {};

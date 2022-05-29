@@ -99,7 +99,7 @@ void DWM3000::configure(DWM3000Config *config) {
     byte mode = (config->phrMode == 0x01) ? 0x10 : 0;
 
     modify32bitReg(GEN_CFG_AES_0, SYS_CFG, 0xFFFC4FCF,
-        (((uint32_t)config->phrRate << 5) & 5) | mode); // SYS_CFG
+        (((uint32_t)config->phrRate << 5) & 0x20) | mode); // SYS_CFG
 
     // OTP_CFG
     uint16_t preambleLen;
@@ -128,20 +128,21 @@ void DWM3000::configure(DWM3000Config *config) {
     }
 
     modify8bitReg(DRX, DTUNE0, 0xFC, config->rxPAC); // PAC
-    write8bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, 0x00); // Clear FINE_PLEN
+    write8bitReg(STS_CONFIG, STS_CFG, 0x03); // Disable STS
+    and16bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, 0x00FF); // Clear FINE_PLEN
     write32bitReg(DRX, DTUNE3, 0xAF5F584C); // Default DTUNE3
 
     // CHAN_CTRL
     modify32bitReg(GEN_CFG_AES_1, CHAN_CTRL, 0xFFFFE000, 
         (config->channel == 9) |                        // Channel 5 or 9
-        (0x1F00 & ((uint32_t)config->rxCode << 0x08)) | // RX code
-        (0xF8 & ((uint32_t)config->txCode << 0x03)) |   // TX code
-        (0x06 & ((uint32_t)config->sfdType << 0x01)));  // SFD type
+        (0x1F00 & ((uint32_t)config->rxCode << 8)) |    // RX code
+        (0x00F8 & ((uint32_t)config->txCode << 3)) |    // TX code
+        (0x0006 & ((uint32_t)config->sfdType << 1)));   // SFD type
 
     // TX_FCTRL
     modify32bitReg(GEN_CFG_AES_0, TX_FCTRL, 0xFFFF0BFF, 
-        ((uint32_t)config->dataRate << 0x0A) | 
-        ((uint32_t)config->txPreambLength) << 0x0C);
+        ((uint32_t)config->dataRate << 10) | 
+        ((uint32_t)config->txPreambLength) << 12);
     
     // DTUNE (SFD timeout)
     if (!config->sfdTO) {
@@ -223,7 +224,7 @@ void DWM3000::configurelut(int channel) {
     write32bitReg(RX_TUNE, DGC_CFG1, 0x1B6DA489);
 }
 
-void DWM3000::configureRFTX(DW3000RFTXConfig *config) {
+void DWM3000::configureRFTX(DWM3000TXConfig *config) {
     if (config->PGcount == 0) {
         write8bitReg(RF_CONF, RF_TX_CTRL_2, config->PGdly);
     } else {
@@ -440,8 +441,8 @@ void DWM3000::pgfCal() {
         while(1) {}
     }
 
-    write8bitReg(EXT_SYNC, RX_CAL, 0x00);
-    write8bitReg(EXT_SYNC, RX_CAL_STS, 0x01);
+    write8bitReg(EXT_SYNC, RX_CAL, 0);
+    write8bitReg(EXT_SYNC, RX_CAL_STS, 1);
     or32bitReg(EXT_SYNC, RX_CAL, 0x10000);
 
     // Throw error if failed
@@ -535,9 +536,13 @@ void DWM3000::setDelayedTime(uint32_t delayedTime) {
     write32bitReg(GEN_CFG_AES_0, DX_TIME, delayedTime);
 }
 
-void DWM3000::setTransmitData(int length, byte* buffer, bool ranging) {
+void DWM3000::setTransmitData(int length, byte* buffer, int ranging, int fcs) {
     writeReg(TX_BUFFER, 0, length, buffer);
-    modify32bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, 0xFC00F400, (length + 2) | ranging << 11);
+    if (fcs) {
+        length += 2;
+    }
+
+    modify32bitReg(GEN_CFG_AES_0, TX_FCTRL_HI, 0xFC00F400, length | ranging << 11);
 }
 
 void DWM3000::setPAN(uint16_t panID, uint16_t shortAddr) {
